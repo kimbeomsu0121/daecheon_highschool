@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대천고등학교 큰별제 부스 실시간 혼잡도</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; }
+    </style>
+</head>
+<body class="bg-white text-neutral-900 min-h-screen flex flex-col selection:bg-black selection:text-white">
+
+    <!-- 상단 네비게이션 바 -->
+    <header class="bg-black text-white shadow-md sticky top-0 z-50 border-b border-neutral-800">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('main')">
+                <i class="fa-solid fa-star text-amber-300"></i>
+                <h1 class="text-base md:text-xl font-bold tracking-tight">대천고등학교 큰별제</h1>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>간소화 버전</span>
+                </div>
+
+                <div id="auth-nav">
+                    <button onclick="openLoginModal()" class="bg-white hover:bg-neutral-200 text-black text-xs md:text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm flex items-center space-x-1.5 active:scale-95">
+                        <i class="fa-solid fa-lock text-xs"></i>
+                        <span>로그인</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
+
+        <!-- 일반 사용자 및 전체 현황 뷰 -->
+        <div id="view-main" class="space-y-6">
+            <!-- 안내 배너 -->
+            <div class="bg-neutral-900 rounded-2xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="space-y-2 mb-4 md:mb-0">
+                    <span class="text-xs font-semibold tracking-wider text-neutral-400 uppercase">Daechon High School Festival</span>
+                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">⭐ 제OO회 대천고 큰별제 부스 현황</h2>
+                    <p class="text-neutral-400 text-sm">학년별 및 테마별 부스의 혼잡도를 손쉽게 확인하세요.</p>
+                </div>
+                <!-- 범례 -->
+                <div class="flex flex-wrap gap-2 bg-neutral-800/80 p-3 rounded-xl border border-neutral-700 text-xs font-medium">
+                    <div class="flex items-center space-x-1.5 px-2 py-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm"></span><span class="text-emerald-300">여유</span></div>
+                    <div class="flex items-center space-x-1.5 px-2 py-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-sm"></span><span class="text-amber-200">보통</span></div>
+                    <div class="flex items-center space-x-1.5 px-2 py-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-sm"></span><span class="text-rose-300">혼잡</span></div>
+                </div>
+            </div>
+
+            <!-- 목록형 뷰 컨테이너 -->
+            <div id="section-list-view" class="space-y-6">
+                <!-- 필터 영역 -->
+                <div class="bg-white rounded-2xl p-4 border border-neutral-200 shadow-xs space-y-3">
+                    <div class="flex flex-wrap gap-2 items-center justify-between border-b border-neutral-100 pb-3">
+                        <div class="text-xs font-bold text-neutral-500 flex items-center space-x-1">
+                            <i class="fa-solid fa-filter text-black"></i>
+                            <span>학년별:</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 flex-grow sm:flex-grow-0">
+                            <button onclick="filterByType('grade', 'all')" id="btn-filter-all" class="filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-black text-white transition active:scale-95 shadow-xs">전체</button>
+                            <button onclick="filterByType('grade', '1학년')" id="filter-1학년" class="filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">1학년</button>
+                            <button onclick="filterByType('grade', '2학년')" id="filter-2학년" class="filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">2학년</button>
+                            <button onclick="filterByType('grade', '3학년')" id="filter-3학년" class="filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">3학년</button>
+                            <button onclick="filterByType('grade', '특별구역')" id="filter-특별구역" class="filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">특별구역</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 items-center justify-between">
+                        <div class="text-xs font-bold text-neutral-500 flex items-center space-x-1">
+                            <i class="fa-solid fa-tags text-black"></i>
+                            <span>테마별:</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 flex-grow sm:flex-grow-0">
+                            <button onclick="filterByType('theme', 'all')" id="btn-theme-all" class="filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-neutral-800 text-white transition active:scale-95">전체테마</button>
+                            <button onclick="filterByType('theme', '먹거리')" id="filter-theme-먹거리" class="filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">🍔 먹거리</button>
+                            <button onclick="filterByType('theme', '오락/게임')" id="filter-theme-오락/게임" class="filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">🎮 게임</button>
+                            <button onclick="filterByType('theme', '체험/전시')" id="filter-theme-체험/전시" class="filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">🎨 체험</button>
+                            <button onclick="filterByType('theme', '포토존/기타')" id="filter-theme-포토존/기타" class="filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95">📸 포토존</button>
+                        </div>
+                    </div>
+
+                    <div id="sub-filter-container" class="pt-2 border-t border-neutral-100 flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <!-- 부스 리스트 -->
+                <div class="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-6 pb-4 border-b border-neutral-100">
+                        <h3 id="grid-title" class="text-base md:text-lg font-bold text-neutral-900 flex items-center space-x-2">
+                            <i class="fa-solid fa-map text-black"></i>
+                            <span>전체 부스 목록</span>
+                        </h3>
+                        <span class="text-xs text-neutral-400">빠른 탐색 적용</span>
+                    </div>
+
+                    <div id="booth-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 관리자 대시보드 -->
+        <div id="view-admin" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl p-6 md:p-8 border border-neutral-200 shadow-sm">
+                <div class="flex justify-between items-center pb-6 border-b border-neutral-200">
+                    <div>
+                        <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">관리자 모드</span>
+                        <h2 id="admin-booth-title" class="text-xl md:text-2xl font-bold text-neutral-900 mt-1">-- 부스 관리</h2>
+                    </div>
+                    <button onclick="logout()" class="bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-semibold px-4 py-2 rounded-lg transition active:scale-95">
+                        로그아웃
+                    </button>
+                </div>
+
+                <div class="py-10 space-y-6">
+                    <p class="text-neutral-600 text-center text-sm md:text-base">혼잡도 상태를 선택해주세요.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                        <button onclick="updateStatus('여유')" class="p-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold flex flex-col items-center space-y-2 transition active:scale-95 shadow-sm">
+                            <span class="w-4 h-4 rounded-full bg-emerald-500 inline-block shadow-sm"></span>
+                            <span class="text-lg">여유</span>
+                        </button>
+                        <button onclick="updateStatus('보통')" class="p-6 rounded-2xl border-2 border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold flex flex-col items-center space-y-2 transition active:scale-95 shadow-sm">
+                            <span class="w-4 h-4 rounded-full bg-amber-400 inline-block shadow-sm"></span>
+                            <span class="text-lg">보통</span>
+                        </button>
+                        <button onclick="updateStatus('혼잡')" class="p-6 rounded-2xl border-2 border-rose-500 bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold flex flex-col items-center space-y-2 transition active:scale-95 shadow-sm">
+                            <span class="w-4 h-4 rounded-full bg-rose-500 inline-block shadow-sm"></span>
+                            <span class="text-lg">혼잡</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 로그인 모달 -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl space-y-6 border border-neutral-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-neutral-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-black"></i>
+                    <span>부스 담당자 로그인</span>
+                </h3>
+                <button onclick="closeLoginModal()" class="text-neutral-400 hover:text-neutral-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">운영 부스 선택</label>
+                    <select id="login-booth-id" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-3 text-sm text-neutral-800 focus:outline-none focus:border-black"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">비밀번호</label>
+                    <input type="password" id="login-password" placeholder="비밀번호 입력 (1234)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-3 text-sm text-neutral-800 focus:outline-none focus:border-black" required>
+                </div>
+                <button type="submit" class="w-full bg-black hover:bg-neutral-800 text-white font-semibold py-3.5 rounded-xl transition text-sm shadow-sm active:scale-95">
+                    로그인
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div id="alert-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 border border-neutral-200">
+            <div id="alert-icon" class="text-3xl text-black mb-1"></div>
+            <h4 id="alert-title" class="text-lg font-bold text-neutral-900">알림</h4>
+            <p id="alert-message" class="text-sm text-neutral-600"></p>
+            <button onclick="closeAlertModal()" class="w-full bg-black hover:bg-neutral-800 text-white font-semibold py-2.5 rounded-xl transition text-sm active:scale-95">확인</button>
+        </div>
+    </div>
+
+    <script>
+        let booths = [];
+        let currentManagedBoothId = null;
+        let selectedGradeFilter = 'all';
+        let selectedThemeFilter = 'all';
+        let selectedSubClass = null;
+
+        function initApp() {
+            const savedData = localStorage.getItem('daechon_festival_optimized_v2');
+            if (savedData) {
+                try { booths = JSON.parse(savedData); } catch (e) { booths = generateDefaultBooths(); }
+            } else {
+                booths = generateDefaultBooths();
+                localStorage.setItem('daechon_festival_optimized_v2', JSON.stringify(booths));
+            }
+            renderBoothGrid();
+            populateBoothSelect();
+        }
+
+        function generateDefaultBooths() {
+            let list = [];
+            let idCounter = 1;
+            const themes = ["먹거리", "오락/게임", "체험/전시", "포토존/기타"];
+
+            for (let grade = 1; grade <= 3; grade++) {
+                for (let classNum = 1; classNum <= 7; classNum++) {
+                    let defaultTheme = themes[(classNum + grade) % themes.length];
+                    list.push({
+                        id: idCounter++,
+                        gradeGroup: `${grade}학년`,
+                        name: `${grade}학년 ${classNum}반 축제 부스`,
+                        location: `본관 ${grade + 1}층 ${grade}-${classNum} 교실`,
+                        status: "여유",
+                        category: defaultTheme
+                    });
+                }
+            }
+
+            const specials = [
+                { name: "우솔관: 대강당 공연 및 장기자랑", location: "우솔관 1층 대강당", category: "체험/전시" },
+                { name: "생명과학실: 과학 실험 체험", location: "과학동 2층", category: "체험/전시" },
+                { name: "정보실: 코딩 게임 및 VR", location: "본관 3층", category: "오락/게임" },
+                { name: "미술실: 캐리커처", location: "예술동 1층", category: "포토존/기타" }
+            ];
+
+            specials.forEach(s => {
+                list.push({
+                    id: idCounter++,
+                    gradeGroup: "특별구역",
+                    name: s.name,
+                    location: s.location,
+                    status: "보통",
+                    category: s.category
+                });
+            });
+            return list;
+        }
+
+        function renderBoothGrid() {
+            const grid = document.getElementById('booth-grid');
+            if (!grid) return;
+            
+            const fragment = document.createDocumentFragment();
+            grid.innerHTML = '';
+
+            let filtered = booths.filter(b => {
+                if (selectedGradeFilter !== 'all' && b.gradeGroup !== selectedGradeFilter) return false;
+                if (selectedThemeFilter !== 'all' && b.category !== selectedThemeFilter) return false;
+                if (selectedSubClass && !b.name.includes(selectedSubClass)) return false;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-neutral-400 text-sm">해당 조건의 부스가 없습니다.</div>`;
+                return;
+            }
+
+            filtered.forEach(booth => {
+                let badgeStyle = booth.status === '여유' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 
+                                 booth.status === '보통' ? 'bg-amber-100 text-amber-900 border-amber-300' : 
+                                 'bg-rose-100 text-rose-900 border-rose-300';
+                let dotStyle = booth.status === '여유' ? 'bg-emerald-500' : booth.status === '보통' ? 'bg-amber-400' : 'bg-rose-500';
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl p-5 border border-neutral-200 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4`;
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2.5">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-700">${booth.category}</span>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 ${badgeStyle}">
+                                <span class="w-2 h-2 rounded-full ${dotStyle}"></span>
+                                <span>${booth.status}</span>
+                            </span>
+                        </div>
+                        <h4 class="text-base md:text-lg font-bold text-neutral-900">${booth.name}</h4>
+                        <p class="text-xs text-neutral-500 mt-1"><i class="fa-solid fa-location-dot text-neutral-400 mr-1"></i>${booth.location}</p>
+                    </div>
+                    <div class="pt-3 border-t border-neutral-100 flex justify-between items-center">
+                        <span class="text-xs text-neutral-400">터치하여 관리</span>
+                        <button onclick="quickManage(${booth.id})" class="text-xs font-semibold text-black hover:underline active:scale-95">담당자 모드</button>
+                    </div>
+                `;
+                fragment.appendChild(card);
+            });
+
+            grid.appendChild(fragment);
+        }
+
+        function filterByType(type, value) {
+            if (type === 'grade') {
+                selectedGradeFilter = value;
+                selectedSubClass = null;
+
+                document.querySelectorAll('.filter-grade-btn').forEach(btn => {
+                    btn.className = "filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95";
+                });
+                const activeBtn = document.getElementById(value === 'all' ? 'btn-filter-all' : `filter-${value}`);
+                if (activeBtn) activeBtn.className = "filter-grade-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-black text-white transition active:scale-95 shadow-xs";
+
+                const subContainer = document.getElementById('sub-filter-container');
+                subContainer.innerHTML = '';
+                if (value !== 'all' && value !== '특별구역') {
+                    for (let i = 1; i <= 7; i++) {
+                        const subBtn = document.createElement('button');
+                        subBtn.className = "sub-class-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition active:scale-95";
+                        subBtn.textContent = `${i}반`;
+                        subBtn.onclick = () => filterByClass(value, i, subBtn);
+                        subContainer.appendChild(subBtn);
+                    }
+                }
+            } else if (type === 'theme') {
+                selectedThemeFilter = value;
+                document.querySelectorAll('.filter-theme-btn').forEach(btn => {
+                    btn.className = "filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition active:scale-95";
+                });
+                const activeThemeBtn = document.getElementById(value === 'all' ? 'btn-theme-all' : `filter-theme-${value}`);
+                if (activeThemeBtn) activeThemeBtn.className = "filter-theme-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-neutral-800 text-white transition active:scale-95";
+            }
+
+            renderBoothGrid();
+        }
+
+        function filterByClass(grade, classNum, btnElement) {
+            document.querySelectorAll('.sub-class-btn').forEach(b => {
+                b.className = "sub-class-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-100 text-neutral-700 transition active:scale-95";
+            });
+            btnElement.className = "sub-class-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-800 text-white transition active:scale-95";
+
+            selectedSubClass = `${grade} ${classNum}반`;
+            renderBoothGrid();
+        }
+
+        function updateStatus(newStatus) {
+            if (currentManagedBoothId === null) return;
+            booths = booths.map(b => b.id === currentManagedBoothId ? { ...b, status: newStatus } : b);
+            localStorage.setItem('daechon_festival_optimized_v2', JSON.stringify(booths));
+            renderBoothGrid();
+            showAlert('완료', `부스 상태가 [${newStatus}] (으)로 변경되었습니다.`, 'fa-solid fa-circle-check');
+        }
+
+        function populateBoothSelect() {
+            const select = document.getElementById('login-booth-id');
+            if (!select) return;
+            select.innerHTML = booths.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+        }
+
+        function switchView(viewName) {
+            document.getElementById('view-main').classList.toggle('hidden', viewName !== 'main');
+            document.getElementById('view-admin').classList.toggle('hidden', viewName !== 'admin');
+            if (viewName === 'main') {
+                currentManagedBoothId = null;
+                renderBoothGrid();
+            } else {
+                const booth = booths.find(b => b.id === currentManagedBoothId);
+                if (booth) document.getElementById('admin-booth-title').textContent = booth.name;
+            }
+        }
+
+        function openLoginModal() { document.getElementById('login-modal').classList.remove('hidden'); }
+        function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            const boothId = parseInt(document.getElementById('login-booth-id').value);
+            if (document.getElementById('login-password').value === '1234') {
+                currentManagedBoothId = boothId;
+                closeLoginModal();
+                switchView('admin');
+                document.getElementById('login-password').value = '';
+            } else {
+                showAlert('실패', '비밀번호가 틀렸습니다. (핀번호: 1234)', 'fa-solid fa-triangle-exclamation');
+            }
+        }
+
+        function quickManage(boothId) {
+            currentManagedBoothId = boothId;
+            openLoginModal();
+            document.getElementById('login-booth-id').value = boothId;
+        }
+
+        function logout() { switchView('main'); showAlert('로그아웃', '관리자 모드를 종료합니다.', 'fa-solid fa-circle-check'); }
+
+        function showAlert(title, msg, icon) {
+            document.getElementById('alert-title').textContent = title;
+            document.getElementById('alert-message').textContent = msg;
+            document.getElementById('alert-icon').innerHTML = `<i class="${icon}"></i>`;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlertModal() { document.getElementById('alert-modal').classList.add('hidden'); }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
