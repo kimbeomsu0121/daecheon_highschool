@@ -1,1 +1,0 @@
-# daecheon_highschool
