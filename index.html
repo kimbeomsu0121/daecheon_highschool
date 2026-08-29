@@ -48,7 +48,7 @@
                 <div class="space-y-2 mb-4 md:mb-0">
                     <span class="text-xs font-semibold tracking-wider text-neutral-400 uppercase">Daechon High School Festival</span>
                     <h2 class="text-2xl md:text-3xl font-bold tracking-tight">⭐ 제OO회 대천고 큰별제 부스 현황</h2>
-                    <p class="text-neutral-400 text-sm">실시간 클라우드 서버 연동을 통해 다른 기기에서도 즉시 반영됩니다.</p>
+                    <p class="text-neutral-400 text-sm">실시간 클라우드 서버 연동을 통해 새로고침하거나 다른 기기에서도 즉시 반영됩니다.</p>
                 </div>
                 <!-- 범례 -->
                 <div class="flex flex-wrap gap-2 bg-neutral-800/80 p-3 rounded-xl border border-neutral-700 text-xs font-medium">
@@ -100,7 +100,7 @@
                             <i class="fa-solid fa-map text-black"></i>
                             <span>전체 부스 목록</span>
                         </h3>
-                        <span class="text-xs text-neutral-400">실시간 동기화 활성화</span>
+                        <span class="text-xs text-neutral-400">실시간 클라우드 동기화 활성화</span>
                     </div>
 
                     <div id="booth-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -122,7 +122,7 @@
                 </div>
 
                 <div class="py-10 space-y-6">
-                    <p class="text-neutral-600 text-center text-sm md:text-base">혼잡도 상태를 선택해주세요. (즉시 모든 기기에 반영됩니다)</p>
+                    <p class="text-neutral-600 text-center text-sm md:text-base">혼잡도 상태를 선택해주세요. (즉시 서버에 저장되며 모든 기기에 실시간 반영됩니다)</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
                         <button onclick="updateStatus('여유')" class="p-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold flex flex-col items-center space-y-2 transition active:scale-95 shadow-sm">
@@ -285,10 +285,9 @@
 
         async function setupRealtimeListener() {
             if (!db) return;
-            // 올바른 규칙 경로 사용: /artifacts/{appId}/public/data/{collectionName}
             const collectionRef = collection(db, 'artifacts', appId, 'public', 'data');
 
-            // 최초 진입 시 데이터가 없으면 기본 부스 세팅 업로드
+            // 최초 진입 시 데이터가 없으면 기본 부스 데이터를 서버에 업로드
             const snapshot = await getDocs(collectionRef);
             if (snapshot.empty) {
                 const defaults = getDefaultBooths();
@@ -297,7 +296,7 @@
                 }
             }
 
-            // 실시간 스냅샷 리스너 등록 (다른 기기에서 수정 시 즉시 반영됨)
+            // 실시간 스냅샷 리스너 등록 (새로고침하거나 다른 기기에서 변경 시 즉시 반영 및 유지됨)
             onSnapshot(collectionRef, (querySnapshot) => {
                 let fetchedBooths = [];
                 querySnapshot.forEach((docSnap) => {
@@ -315,7 +314,7 @@
             });
         }
 
-        // 혼잡도 상태 변경 및 클라우드 실시간 반영
+        // 혼잡도 상태 변경 및 클라우드 서버 저장
         window.updateStatus = async function(newStatus) {
             if (currentManagedBoothId === null) return;
 
@@ -334,7 +333,7 @@
                             category: target.category
                         }, { merge: true });
 
-                        showAlert('완료', `부스 상태가 [${newStatus}] (으)로 모든 기기에 실시간 반영되었습니다.`, 'fa-solid fa-circle-check');
+                        showAlert('완료', `부스 상태가 [${newStatus}] (으)로 서버에 저장되어 모든 기기에 즉시 반영되었습니다.`, 'fa-solid fa-circle-check');
                     }
                 } catch (e) {
                     console.error("Update error:", e);
