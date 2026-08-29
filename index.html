@@ -22,14 +22,8 @@
             </div>
             
             <div class="flex items-center space-x-3">
-                <!-- 실시간 접속자 수 표기 -->
-                <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>접속자: <strong id="visitor-count" class="text-white">1</strong>명</span>
-                </div>
-
                 <!-- 서버 연결 상태 표시 -->
-                <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200 hidden sm:flex">
+                <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200">
                     <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     <span id="sync-status-text">연결 중...</span>
                 </div>
@@ -54,7 +48,7 @@
                 <div class="space-y-2 mb-4 md:mb-0">
                     <span class="text-xs font-semibold tracking-wider text-neutral-400 uppercase">Daechon High School Festival</span>
                     <h2 class="text-2xl md:text-3xl font-bold tracking-tight">⭐ 제OO회 대천고 큰별제 부스 현황</h2>
-                    <p class="text-neutral-400 text-sm">실시간 서버 연동을 통해 모든 접속자의 화면에 즉시 반영됩니다.</p>
+                    <p class="text-neutral-400 text-sm">실시간 클라우드 서버 연동을 통해 다른 기기에서도 즉시 반영됩니다.</p>
                 </div>
                 <!-- 범례 -->
                 <div class="flex flex-wrap gap-2 bg-neutral-800/80 p-3 rounded-xl border border-neutral-700 text-xs font-medium">
@@ -106,7 +100,7 @@
                             <i class="fa-solid fa-map text-black"></i>
                             <span>전체 부스 목록</span>
                         </h3>
-                        <span class="text-xs text-neutral-400">클라우드 실시간 동기화</span>
+                        <span class="text-xs text-neutral-400">실시간 동기화 활성화</span>
                     </div>
 
                     <div id="booth-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -128,7 +122,7 @@
                 </div>
 
                 <div class="py-10 space-y-6">
-                    <p class="text-neutral-600 text-center text-sm md:text-base">혼잡도 상태를 선택해주세요.</p>
+                    <p class="text-neutral-600 text-center text-sm md:text-base">혼잡도 상태를 선택해주세요. (즉시 모든 기기에 반영됩니다)</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
                         <button onclick="updateStatus('여유')" class="p-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold flex flex-col items-center space-y-2 transition active:scale-95 shadow-sm">
@@ -246,7 +240,6 @@
             booths = getDefaultBooths();
             renderBoothGrid();
             populateBoothSelect();
-            initVisitorCounter();
 
             try {
                 if (Object.keys(firebaseConfig).length > 0) {
@@ -263,7 +256,7 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             currentUserId = user.uid;
-                            updateSyncStatus(true, "서버 연결됨");
+                            updateSyncStatus(true, "클라우드 연동됨");
                             await setupRealtimeListener();
                         }
                     });
@@ -290,16 +283,12 @@
             }
         }
 
-        function initVisitorCounter() {
-            let count = Math.floor(Math.random() * 20) + 45;
-            const el = document.getElementById('visitor-count');
-            if (el) el.textContent = count;
-        }
-
         async function setupRealtimeListener() {
             if (!db) return;
+            // 올바른 규칙 경로 사용: /artifacts/{appId}/public/data/{collectionName}
             const collectionRef = collection(db, 'artifacts', appId, 'public', 'data');
 
+            // 최초 진입 시 데이터가 없으면 기본 부스 세팅 업로드
             const snapshot = await getDocs(collectionRef);
             if (snapshot.empty) {
                 const defaults = getDefaultBooths();
@@ -308,6 +297,7 @@
                 }
             }
 
+            // 실시간 스냅샷 리스너 등록 (다른 기기에서 수정 시 즉시 반영됨)
             onSnapshot(collectionRef, (querySnapshot) => {
                 let fetchedBooths = [];
                 querySnapshot.forEach((docSnap) => {
@@ -321,10 +311,11 @@
                 }
             }, (error) => {
                 console.error("Snapshot error:", error);
+                updateSyncStatus(false, "동기화 오류");
             });
         }
 
-        // 상태 변경 함수 오류 수정 및 전역 노출
+        // 혼잡도 상태 변경 및 클라우드 실시간 반영
         window.updateStatus = async function(newStatus) {
             if (currentManagedBoothId === null) return;
 
@@ -343,14 +334,13 @@
                             category: target.category
                         }, { merge: true });
 
-                        showAlert('완료', `부스 상태가 [${newStatus}] (으)로 모든 사용자에게 실시간 반영되었습니다.`, 'fa-solid fa-circle-check');
+                        showAlert('완료', `부스 상태가 [${newStatus}] (으)로 모든 기기에 실시간 반영되었습니다.`, 'fa-solid fa-circle-check');
                     }
                 } catch (e) {
                     console.error("Update error:", e);
                     showAlert('오류', '상태 변경 중 문제가 발생했습니다.', 'fa-solid fa-triangle-exclamation');
                 }
             } else {
-                // 오프라인/로컬 폴백 처리
                 booths = booths.map(b => b.id === currentManagedBoothId ? { ...b, status: newStatus } : b);
                 renderBoothGrid();
                 showAlert('완료', `부스 상태가 [${newStatus}] (으)로 변경되었습니다.`, 'fa-solid fa-circle-check');
