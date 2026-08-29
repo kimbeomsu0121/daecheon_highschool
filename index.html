@@ -23,8 +23,8 @@
             
             <div class="flex items-center space-x-3">
                 <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span>간소화 버전</span>
+                    <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="sync-status-text">서버 연결 중...</span>
                 </div>
 
                 <div id="auth-nav">
@@ -47,7 +47,7 @@
                 <div class="space-y-2 mb-4 md:mb-0">
                     <span class="text-xs font-semibold tracking-wider text-neutral-400 uppercase">Daechon High School Festival</span>
                     <h2 class="text-2xl md:text-3xl font-bold tracking-tight">⭐ 제OO회 대천고 큰별제 부스 현황</h2>
-                    <p class="text-neutral-400 text-sm">학년별 및 테마별 부스의 혼잡도를 손쉽게 확인하세요.</p>
+                    <p class="text-neutral-400 text-sm">실시간 서버 연동을 통해 모든 접속자의 화면에 즉시 반영됩니다.</p>
                 </div>
                 <!-- 범례 -->
                 <div class="flex flex-wrap gap-2 bg-neutral-800/80 p-3 rounded-xl border border-neutral-700 text-xs font-medium">
@@ -99,7 +99,7 @@
                             <i class="fa-solid fa-map text-black"></i>
                             <span>전체 부스 목록</span>
                         </h3>
-                        <span class="text-xs text-neutral-400">빠른 탐색 적용</span>
+                        <span class="text-xs text-neutral-400">클라우드 실시간 동기화</span>
                     </div>
 
                     <div id="booth-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -178,26 +178,25 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDK 로드 및 실시간 연동 로직 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'daechon-festival-2026';
+
+        let db = null;
+        let auth = null;
+        let currentUserId = null;
         let booths = [];
         let currentManagedBoothId = null;
         let selectedGradeFilter = 'all';
         let selectedThemeFilter = 'all';
         let selectedSubClass = null;
 
-        function initApp() {
-            const savedData = localStorage.getItem('daechon_festival_optimized_v2');
-            if (savedData) {
-                try { booths = JSON.parse(savedData); } catch (e) { booths = generateDefaultBooths(); }
-            } else {
-                booths = generateDefaultBooths();
-                localStorage.setItem('daechon_festival_optimized_v2', JSON.stringify(booths));
-            }
-            renderBoothGrid();
-            populateBoothSelect();
-        }
-
-        function generateDefaultBooths() {
+        function getDefaultBooths() {
             let list = [];
             let idCounter = 1;
             const themes = ["먹거리", "오락/게임", "체험/전시", "포토존/기타"];
@@ -236,7 +235,109 @@
             return list;
         }
 
-        function renderBoothGrid() {
+        async function initFirebaseApp() {
+            booths = getDefaultBooths();
+            renderBoothGrid();
+            populateBoothSelect();
+
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            currentUserId = user.uid;
+                            updateSyncStatus(true, "서버 실시간 연동됨");
+                            await setupRealtimeListener();
+                        }
+                    });
+                } else {
+                    updateSyncStatus(false, "오프라인 모드");
+                }
+            } catch (err) {
+                console.error("Firebase Init Error:", err);
+                updateSyncStatus(false, "연결 실패");
+            }
+        }
+
+        function updateSyncStatus(isConnected, message) {
+            const dot = document.getElementById('sync-status-dot');
+            const text = document.getElementById('sync-status-text');
+            if (dot && text) {
+                if (isConnected) {
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                    text.textContent = message;
+                } else {
+                    dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                    text.textContent = message;
+                }
+            }
+        }
+
+        async function setupRealtimeListener() {
+            if (!db) return;
+            const collectionRef = collection(db, 'artifacts', appId, 'public', 'data');
+
+            const snapshot = await getDocs(collectionRef);
+            if (snapshot.empty) {
+                const defaults = getDefaultBooths();
+                for (let booth of defaults) {
+                    await setDoc(doc(collectionRef, String(booth.id)), booth);
+                }
+            }
+
+            onSnapshot(collectionRef, (querySnapshot) => {
+                let fetchedBooths = [];
+                querySnapshot.forEach((docSnap) => {
+                    fetchedBooths.push(docSnap.data());
+                });
+                if (fetchedBooths.length > 0) {
+                    fetchedBooths.sort((a, b) => a.id - b.id);
+                    booths = fetchedBooths;
+                    renderBoothGrid();
+                    populateBoothSelect();
+                }
+            }, (error) => {
+                console.error("Snapshot error:", error);
+            });
+        }
+
+        window.updateStatus = async function(newStatus) {
+            if (currentManagedBoothId === null) return;
+
+            if (db && currentUserId) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', String(currentManagedBoothId));
+                    const target = booths.find(b => b.id === currentManagedBoothId);
+                    if (target) {
+                        target.status = newStatus;
+                        await setDoc(docRef, {
+                            id: target.id,
+                            gradeGroup: target.gradeGroup,
+                            name: target.name,
+                            location: target.location,
+                            status: newStatus,
+                            category: target.category
+                        }, { merge: true });
+
+                        showAlert('완료', `부스 상태가 [${newStatus}] (으)로 모든 사용자에게 실시간 반영되었습니다.`, 'fa-solid fa-circle-check');
+                    }
+                } catch (e) {
+                    console.error("Update error:", e);
+                    showAlert('오류', '상태 변경 중 문제가 발생했습니다.', 'fa-solid fa-triangle-exclamation');
+                }
+            }
+        }
+
+        window.renderBoothGrid = function() {
             const grid = document.getElementById('booth-grid');
             if (!grid) return;
             
@@ -286,7 +387,7 @@
             grid.appendChild(fragment);
         }
 
-        function filterByType(type, value) {
+        window.filterByType = function(type, value) {
             if (type === 'grade') {
                 selectedGradeFilter = value;
                 selectedSubClass = null;
@@ -330,21 +431,13 @@
             renderBoothGrid();
         }
 
-        function updateStatus(newStatus) {
-            if (currentManagedBoothId === null) return;
-            booths = booths.map(b => b.id === currentManagedBoothId ? { ...b, status: newStatus } : b);
-            localStorage.setItem('daechon_festival_optimized_v2', JSON.stringify(booths));
-            renderBoothGrid();
-            showAlert('완료', `부스 상태가 [${newStatus}] (으)로 변경되었습니다.`, 'fa-solid fa-circle-check');
-        }
-
-        function populateBoothSelect() {
+        window.populateBoothSelect = function() {
             const select = document.getElementById('login-booth-id');
             if (!select) return;
             select.innerHTML = booths.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
         }
 
-        function switchView(viewName) {
+        window.switchView = function(viewName) {
             document.getElementById('view-main').classList.toggle('hidden', viewName !== 'main');
             document.getElementById('view-admin').classList.toggle('hidden', viewName !== 'admin');
             if (viewName === 'main') {
@@ -356,10 +449,10 @@
             }
         }
 
-        function openLoginModal() { document.getElementById('login-modal').classList.remove('hidden'); }
-        function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
-        
-        function handleLogin(event) {
+        window.openLoginModal = function() { document.getElementById('login-modal').classList.remove('hidden'); }
+        window.closeLoginModal = function() { document.getElementById('login-modal').classList.add('hidden'); }
+
+        window.handleLogin = function(event) {
             event.preventDefault();
             const boothId = parseInt(document.getElementById('login-booth-id').value);
             if (document.getElementById('login-password').value === '1234') {
@@ -372,13 +465,13 @@
             }
         }
 
-        function quickManage(boothId) {
+        window.quickManage = function(boothId) {
             currentManagedBoothId = boothId;
             openLoginModal();
             document.getElementById('login-booth-id').value = boothId;
         }
 
-        function logout() { switchView('main'); showAlert('로그아웃', '관리자 모드를 종료합니다.', 'fa-solid fa-circle-check'); }
+        window.logout = function() { switchView('main'); showAlert('로그아웃', '관리자 모드를 종료합니다.', 'fa-solid fa-circle-check'); }
 
         function showAlert(title, msg, icon) {
             document.getElementById('alert-title').textContent = title;
@@ -387,9 +480,9 @@
             document.getElementById('alert-modal').classList.remove('hidden');
         }
 
-        function closeAlertModal() { document.getElementById('alert-modal').classList.add('hidden'); }
+        window.closeAlertModal = function() { document.getElementById('alert-modal').classList.add('hidden'); }
 
-        window.onload = initApp;
+        window.onload = initFirebaseApp;
     </script>
 </body>
 </html>
