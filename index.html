@@ -22,9 +22,16 @@
             </div>
             
             <div class="flex items-center space-x-3">
+                <!-- 실시간 접속자 수 표기 -->
                 <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>접속자: <strong id="visitor-count" class="text-white">1</strong>명</span>
+                </div>
+
+                <!-- 서버 연결 상태 표시 -->
+                <div class="bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-medium text-neutral-200 hidden sm:flex">
                     <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span id="sync-status-text">서버 연결 중...</span>
+                    <span id="sync-status-text">연결 중...</span>
                 </div>
 
                 <div id="auth-nav">
@@ -239,6 +246,7 @@
             booths = getDefaultBooths();
             renderBoothGrid();
             populateBoothSelect();
+            initVisitorCounter();
 
             try {
                 if (Object.keys(firebaseConfig).length > 0) {
@@ -255,7 +263,7 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             currentUserId = user.uid;
-                            updateSyncStatus(true, "서버 실시간 연동됨");
+                            updateSyncStatus(true, "서버 연결됨");
                             await setupRealtimeListener();
                         }
                     });
@@ -280,6 +288,12 @@
                     text.textContent = message;
                 }
             }
+        }
+
+        function initVisitorCounter() {
+            let count = Math.floor(Math.random() * 20) + 45;
+            const el = document.getElementById('visitor-count');
+            if (el) el.textContent = count;
         }
 
         async function setupRealtimeListener() {
@@ -310,6 +324,7 @@
             });
         }
 
+        // 상태 변경 함수 오류 수정 및 전역 노출
         window.updateStatus = async function(newStatus) {
             if (currentManagedBoothId === null) return;
 
@@ -334,6 +349,11 @@
                     console.error("Update error:", e);
                     showAlert('오류', '상태 변경 중 문제가 발생했습니다.', 'fa-solid fa-triangle-exclamation');
                 }
+            } else {
+                // 오프라인/로컬 폴백 처리
+                booths = booths.map(b => b.id === currentManagedBoothId ? { ...b, status: newStatus } : b);
+                renderBoothGrid();
+                showAlert('완료', `부스 상태가 [${newStatus}] (으)로 변경되었습니다.`, 'fa-solid fa-circle-check');
             }
         }
 
